@@ -1,3 +1,6 @@
+This is a bugfix fork by Nat!. It works on iOS 7 but I made no effort to make 
+it nice.
+
 PopulateContacts
 ================
 

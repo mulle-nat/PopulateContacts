@@ -20,12 +20,66 @@
 	// Do any additional setup after loading the view, typically from a nib.
     
     [self initializeStringArrays];
+    [self accessAdressBook];
 }
 
 - (void)didReceiveMemoryWarning
 {
     [super didReceiveMemoryWarning];
     // Dispose of any resources that can be recreated.
+}
+
+
+// this is running in a different thread (!)
+- (void) accessGranted
+{
+   _accessGranted = YES;
+}
+
+
+- (void) accessDeniedWithError:(CFErrorRef) error
+{
+   NSLog( @"access denied %@", error);
+   abort();  // clean exit lol
+}
+
+
+- (void) accessAdressBook
+{
+   ABAddressBookRef   abook;
+   
+   abook = [self newAddressBook];
+   if( ! abook)
+      return;
+   
+   // lame ass fing interface
+   ABAddressBookRequestAccessWithCompletion( abook, ^ (bool granted, CFErrorRef error)
+                                            {
+                                               if( ! granted)
+                                                  [self accessDeniedWithError:error];
+                                               else
+                                                  [self accessGranted];
+                                               
+                                               CFRelease( abook);
+                                            });
+}
+
+- (ABAddressBookRef) newAddressBook
+{
+   ABAddressBookRef   abook;
+   CFErrorRef         error;
+   
+   if( !_accessGranted)
+      return( nil);
+   
+   error = NULL;
+   abook = ABAddressBookCreateWithOptions( NULL, &error);
+   if( ! abook)
+   {
+      NSLog( @"%s: it should never happen!! %@", __PRETTY_FUNCTION__, error);
+      return( nil);
+   }
+   return( abook);
 }
 
 
@@ -79,8 +133,11 @@
 - (int)createNewContactRecord {
     int recordsCreated = 0;
 
+   ABAddressBookRef iPhoneAddressBook = [self newAddressBook];
+   if( ! iPhoneAddressBook)
+      abort();
+   
     for (int i=0; i<[names count]; i++) {
-        ABAddressBookRef iPhoneAddressBook = ABAddressBookCreate();
         ABRecordRef newPerson = ABPersonCreate();
         
         NSString *name = [names objectAtIndex:i];
@@ -109,20 +166,23 @@
         ABAddressBookSave(iPhoneAddressBook, nil);
         
         CFRelease(newPerson);
-        CFRelease(iPhoneAddressBook);
-        
+       
         recordsCreated++;
     }
-    
+   CFRelease(iPhoneAddressBook);
+   
     return recordsCreated;
 }
 
 
 - (void)deleteAllContactsInAddressBook {
-    ABAddressBookRef iPhoneAddressBook = ABAddressBookCreate( );
-    CFArrayRef allPeople = ABAddressBookCopyArrayOfAllPeople(iPhoneAddressBook);
-    CFIndex nPeople = ABAddressBookGetPersonCount(iPhoneAddressBook);
-    
+    ABAddressBookRef iPhoneAddressBook = [self newAddressBook];
+   if( ! iPhoneAddressBook)
+      abort();
+
+   CFArrayRef allPeople = ABAddressBookCopyArrayOfAllPeople(iPhoneAddressBook);
+   CFIndex nPeople = ABAddressBookGetPersonCount(iPhoneAddressBook);
+   
     for ( int i = 0; i < nPeople; i++ )
     {
         ABRecordRef ref = CFArrayGetValueAtIndex(allPeople, i);

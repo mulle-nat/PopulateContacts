@@ -17,7 +17,7 @@ enum eActionSheet {
 @interface ViewController : UIViewController <UIActionSheetDelegate> {
     NSArray *names;
     NSArray *companyNames;
-    
+   BOOL   _accessGranted;
     enum eActionSheet sheetType;
 }
 
